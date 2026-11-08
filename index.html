@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f0f0f">
+<title>ESP32 LED Controller</title>
+<style>
+:root{
+  --bg:#0f0f0f;--surface:#181818;--surface-2:#202020;--surface-3:#272727;
+  --border:#303030;--text:#f1f1f1;--muted:#aaa;--accent:#ff3030;
+  --accent-soft:rgba(255,48,48,.14);--accent-glow:rgba(255,48,48,.24);
+  --green:#21c76a;--blue:#3ea6ff;--radius:16px;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.5 Arial,Helvetica,sans-serif;min-height:100vh}
+button,input{font:inherit}
+button{cursor:pointer}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:3px}
+.app{width:min(1160px,100%);margin:0 auto;padding:28px 26px 36px}
+.header{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:22px}
+.title-wrap{display:flex;align-items:center;gap:13px;min-width:0}
+.title-mark{width:5px;height:46px;border-radius:8px;background:var(--accent);box-shadow:0 0 18px var(--accent-glow)}
+h1{font-size:26px;line-height:1.15;margin:0;font-weight:750;letter-spacing:-.4px}
+.subtitle{color:var(--muted);margin:5px 0 0;font-size:13px}
+.header-right{display:flex;align-items:center;gap:10px}
+.status{display:flex;align-items:center;gap:8px;border:1px solid var(--border);border-radius:30px;padding:8px 12px;color:var(--muted);font-size:12px;white-space:nowrap}
+.status.connected{border-color:#176b40;background:#0c2418;color:var(--green)}
+.dot{width:8px;height:8px;border-radius:50%;background:#777;display:inline-block}
+.dot.online{background:var(--green);box-shadow:0 0 9px var(--green)}
+.accent-picker{position:relative}
+.accent-button{height:38px;padding:0 11px;border-radius:10px;border:1px solid var(--border);background:var(--surface);color:var(--text);display:flex;align-items:center;gap:8px;font-size:12px}
+.swatch{width:13px;height:13px;border-radius:50%;background:var(--accent);display:inline-block;box-shadow:0 0 9px var(--accent-glow)}
+.accent-menu{position:absolute;right:0;top:45px;z-index:10;display:none;grid-template-columns:repeat(5,30px);gap:7px;padding:10px;background:#222;border:1px solid var(--border);border-radius:12px;box-shadow:0 12px 30px #0009}
+.accent-menu.open{display:grid}
+.color-choice{width:28px;height:28px;border-radius:50%;border:2px solid #ffffff30;background:var(--choice);padding:0}
+.color-choice[aria-pressed="true"]{outline:2px solid white;outline-offset:2px}
+.connection{display:flex;align-items:center;gap:9px;padding:11px 13px;background:var(--surface);border:1px solid var(--border);border-radius:12px;margin-bottom:18px}
+.connection-label{font-size:12px;color:var(--muted);white-space:nowrap}
+.ip-input{width:180px;max-width:42vw;background:#101010;border:1px solid #3a3a3a;color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px}
+.btn{border:0;border-radius:9px;padding:9px 14px;background:var(--accent);color:white;font-weight:700;font-size:13px;transition:filter .15s,transform .15s}
+.btn:hover{filter:brightness(1.12);transform:translateY(-1px)}
+.btn:disabled{opacity:.55;cursor:wait;transform:none}
+.connection-hint{margin-left:auto;color:var(--muted);font-size:11px;text-align:right}
+.top-grid{display:grid;grid-template-columns:1fr 1.35fr;gap:16px}
+.card{background:linear-gradient(145deg,#1b1b1b,#151515);border:1px solid var(--border);border-radius:var(--radius);padding:21px;box-shadow:0 8px 24px #0003}
+.card-title{font-size:16px;font-weight:700;margin:0 0 17px;display:flex;align-items:center;gap:9px}
+.card-title .symbol{color:var(--accent);font-size:20px}
+.power-row{display:flex;align-items:center;gap:14px}
+.toggle{width:64px;height:35px;padding:4px;border:0;border-radius:30px;background:#505050;transition:background .2s;flex-shrink:0}
+.toggle:before{content:"";display:block;width:27px;height:27px;border-radius:50%;background:#eee;transition:transform .2s}
+.toggle.on{background:var(--accent)}
+.toggle.on:before{transform:translateX(29px)}
+.power-state{font-size:18px;font-weight:750}
+.power-caption{font-size:12px;color:var(--muted);margin:13px 0 0}
+.brightness-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+.brightness-value{font-size:36px;font-weight:750;letter-spacing:-1px}
+.sun{color:#facc15;font-size:22px}
+.range{width:100%;height:7px;appearance:none;background:linear-gradient(to right,var(--accent) 0%,var(--accent) var(--fill,75%),#3c3c3c var(--fill,75%),#3c3c3c 100%);border-radius:99px;outline:none;margin:15px 0 10px;cursor:pointer}
+.range::-webkit-slider-thumb{appearance:none;width:19px;height:19px;border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.range::-moz-range-thumb{width:16px;height:16px;border-radius:50%;background:#fff;border:2px solid var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.range-labels{display:flex;justify-content:space-between;color:var(--muted);font-size:11px}
+.modes-card{margin-top:17px}
+.section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:15px}
+.section-heading{display:flex;align-items:center;gap:10px}
+.section-accent{width:5px;height:27px;border-radius:6px;background:var(--accent)}
+.section-heading h2{font-size:18px;margin:0}
+.section-heading p{font-size:12px;color:var(--muted);margin:2px 0 0}
+.selected-label{font-size:11px;color:var(--muted);background:#242424;padding:6px 9px;border-radius:20px;white-space:nowrap}
+.modes{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:11px}
+.mode{min-height:78px;padding:12px 9px;border:1px solid #363636;border-radius:12px;background:#1e1e1e;color:#ddd;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;transition:background .16s,border-color .16s,transform .16s,box-shadow .16s}
+.mode:hover{background:#262626;border-color:#666;transform:translateY(-1px)}
+.mode.selected{border-color:var(--accent);background:var(--accent-soft);color:var(--text);box-shadow:inset 0 0 0 1px var(--accent),0 0 17px var(--accent-glow)}
+.mode-icon{font-size:23px;line-height:1;color:var(--accent)}
+.mode-name{font-size:12px;font-weight:650;text-align:center}
+.mode-settings{margin-top:15px;border-top:1px solid var(--border);padding-top:14px}
+.settings-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;background:transparent;border:0;color:var(--text);padding:3px 0;font-weight:700;text-align:left}
+.settings-toggle span:last-child{color:var(--muted);font-size:12px}
+.settings-content{display:none;padding-top:14px}
+.settings-content.open{display:block}
+.settings-grid{display:grid;grid-template-columns:1fr 1fr auto;align-items:end;gap:14px}
+.field label{display:block;color:#ddd;font-size:12px;margin-bottom:6px}
+.input-wrap{display:flex;align-items:center;gap:7px}
+.input-wrap input{width:100%;min-width:0;background:#101010;border:1px solid #3a3a3a;color:white;border-radius:8px;padding:10px 11px}
+.unit{color:var(--muted);font-size:13px}
+.settings-note{font-size:11px;color:var(--muted);margin:10px 0 0}
+.footer{font-size:11px;color:#777;text-align:center;margin-top:18px}
+.toast{position:fixed;bottom:20px;right:20px;max-width:min(420px,calc(100vw - 40px));padding:12px 15px;border-radius:10px;background:#292929;border:1px solid #444;color:#eee;box-shadow:0 10px 28px #0008;display:none;z-index:20;font-size:13px}
+.toast.show{display:block}
+@media(max-width:720px){
+ .app{padding:20px 14px 28px}.header{align-items:flex-start}.header-right{flex-direction:column;align-items:flex-end}
+ h1{font-size:22px}.subtitle{font-size:12px}
+ .connection{flex-wrap:wrap}.connection-hint{width:100%;text-align:left;margin:0}
+ .top-grid{grid-template-columns:1fr}.card{padding:17px}
+ .modes{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .settings-grid{grid-template-columns:1fr 1fr}.settings-grid .btn{grid-column:1/-1}
+}
+@media(max-width:390px){.status{font-size:10px;padding:7px 9px}.accent-button{font-size:0}.accent-button .swatch{margin:0}.modes{gap:8px}.mode{min-height:72px}.mode-name{font-size:11px}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="title-wrap">
+      <span class="title-mark"></span>
+      <div><h1>LED Controller</h1><p class="subtitle">Smart lighting at your fingertips</p></div>
+    </div>
+    <div class="header-right">
+      <div class="status" id="statusPill"><span class="dot" id="statusDot"></span><span id="statusText">Not connected</span></div>
+      <div class="accent-picker">
+        <button class="accent-button" id="accentButton" aria-expanded="false"><span class="swatch"></span> Accent <span>▾</span></button>
+        <div class="accent-menu" id="accentMenu" aria-label="Accent colour">
+          <button class="color-choice" style="--choice:#ff3030" data-color="#ff3030" aria-label="Red" aria-pressed="true"></button>
+          <button class="color-choice" style="--choice:#facc15" data-color="#facc15" aria-label="Yellow" aria-pressed="false"></button>
+          <button class="color-choice" style="--choice:#3b82f6" data-color="#3b82f6" aria-label="Blue" aria-pressed="false"></button>
+          <button class="color-choice" style="--choice:#ec4899" data-color="#ec4899" aria-label="Pink" aria-pressed="false"></button>
+          <button class="color-choice" style="--choice:#22c55e" data-color="#22c55e" aria-label="Green" aria-pressed="false"></button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <section class="connection" aria-label="ESP32 connection">
+    <span class="connection-label">ESP32 IP</span>
+    <input class="ip-input" id="ipAddress" type="text" value="192.168.1.105" inputmode="decimal" aria-label="ESP32 IP address">
+    <button class="btn" id="connectButton">Connect</button>
+    <span class="connection-hint" id="connectionHint">Connect your laptop and ESP32 to the same Wi-Fi.</span>
+  </section>
+
+  <section class="top-grid">
+    <div class="card">
+      <h2 class="card-title"><span class="symbol">ϟ</span> LED Power</h2>
+      <div class="power-row">
+        <button class="toggle" id="powerToggle" role="switch" aria-checked="false" aria-label="LED power"></button>
+        <span class="power-state" id="powerState">OFF</span>
+      </div>
+      <p class="power-caption">Tap the switch to turn your LED on or off.</p>
+    </div>
+    <div class="card">
+      <div class="brightness-head">
+        <h2 class="card-title" style="margin:0"><span class="sun">☀</span> Brightness</h2>
+        <div class="brightness-value"><span id="brightnessValue">75</span>%</div>
+      </div>
+      <input class="range" id="brightness" type="range" min="0" max="100" value="75" aria-label="LED brightness">
+      <div class="range-labels"><span>0%</span><span>100%</span></div>
+    </div>
+  </section>
+
+  <section class="card modes-card">
+    <div class="section-head">
+      <div class="section-heading"><span class="section-accent"></span><div><h2>Operating Modes</h2><p>Choose an effect for your LED</p></div></div>
+      <span class="selected-label" id="selectedModeLabel">Variable Speed</span>
+    </div>
+    <div class="modes" id="modeGrid">
+      <button class="mode selected" data-mode="variable"><span class="mode-icon">◉</span><span class="mode-name">Variable Speed</span></button>
+      <button class="mode" data-mode="pulsing"><span class="mode-icon">∿</span><span class="mode-name">Pulsing</span></button>
+      <button class="mode" data-mode="pattern"><span class="mode-icon">▦</span><span class="mode-name">Pattern</span></button>
+      <button class="mode" data-mode="rumbling"><span class="mode-icon">≋</span><span class="mode-name">Low Rumbling</span></button>
+      <button class="mode" data-mode="wave"><span class="mode-icon">〜</span><span class="mode-name">Wave</span></button>
+      <button class="mode" data-mode="random"><span class="mode-icon">⚄</span><span class="mode-name">Random</span></button>
+      <button class="mode" data-mode="buzz"><span class="mode-icon">ϟ</span><span class="mode-name">High-Frequency Buzz</span></button>
+      <button class="mode" data-mode="escalating"><span class="mode-icon">↗</span><span class="mode-name">Escalating</span></button>
+      <button class="mode" data-mode="wave-escalation"><span class="mode-icon">⤴</span><span class="mode-name">Wave Escalation</span></button>
+    </div>
+
+    <div class="mode-settings">
+      <button class="settings-toggle" id="settingsToggle" aria-expanded="false">
+        <span>⚙ &nbsp; Mode Intensity Settings</span><span id="settingsChevron">Show settings ＋</span>
+      </button>
+      <div class="settings-content" id="settingsContent">
+        <div class="settings-grid">
+          <div class="field"><label for="minIntensity">Minimum Intensity</label><div class="input-wrap"><input id="minIntensity" type="number" min="0" max="100" value="0"><span class="unit">%</span></div></div>
+          <div class="field"><label for="maxIntensity">Maximum Intensity</label><div class="input-wrap"><input id="maxIntensity" type="number" min="0" max="100" value="100"><span class="unit">%</span></div></div>
+          <button class="btn" id="applyMode">Apply Mode</button>
+        </div>
+        <p class="settings-note">Each mode has its own minimum and maximum intensity values.</p>
+      </div>
+    </div>
+  </section>
+
+  <p class="footer">Local HTML interface · No website hosting required · Laptop and ESP32 must use the same Wi-Fi network.</p>
+</div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+const $ = id => document.getElementById(id);
+const modes = [
+  ['variable','Variable Speed'],['pulsing','Pulsing'],['pattern','Pattern'],
+  ['rumbling','Low Rumbling'],['wave','Wave'],['random','Random'],
+  ['buzz','High-Frequency Buzz'],['escalating','Escalating'],['wave-escalation','Wave Escalation']
+];
+const modeSettings = Object.fromEntries(modes.map(([id]) => [id,{min:0,max:100}]));
+let selectedMode = 'variable';
+let ledOn = false;
+let requestTimer = null;
+
+function showToast(message){
+  const toast=$('toast');toast.textContent=message;toast.classList.add('show');
+  clearTimeout(requestTimer);requestTimer=setTimeout(()=>toast.classList.remove('show'),3800);
+}
+function baseUrl(){
+  let ip=$('ipAddress').value.trim().replace(/^https?:\/\//i,'').replace(/\/+$/,'');
+  return 'http://'+ip;
+}
+async function sendCommand(path){
+  const response=await fetch(baseUrl()+path,{method:'GET',cache:'no-store'});
+  if(!response.ok) throw new Error('HTTP '+response.status);
+  return response;
+}
+function setConnected(connected,message){
+  $('statusPill').classList.toggle('connected',connected);
+  $('statusDot').classList.toggle('online',connected);
+  $('statusText').textContent=connected?'Connected':'Not connected';
+  $('connectionHint').textContent=message;
+}
+async function connectESP32(){
+  const button=$('connectButton');button.disabled=true;button.textContent='Connecting…';
+  try{
+    await sendCommand('/api/status');
+    setConnected(true,'ESP32 responded successfully.');
+    showToast('ESP32 connected.');
+  }catch(error){
+    setConnected(false,'Could not connect. Check the IP address, Wi-Fi and ESP32 firmware.');
+    showToast('Connection failed. The ESP32 API firmware is not configured yet, or the IP address is incorrect.');
+  }finally{button.disabled=false;button.textContent='Connect';}
+}
+$('connectButton').addEventListener('click',connectESP32);
+
+function renderPower(){
+  $('powerToggle').classList.toggle('on',ledOn);
+  $('powerToggle').setAttribute('aria-checked',String(ledOn));
+  $('powerState').textContent=ledOn?'ON':'OFF';
+}
+$('powerToggle').addEventListener('click',async()=>{
+  const next=!ledOn;
+  try{
+    await sendCommand('/api/led?state='+(next?'on':'off'));
+    ledOn=next;renderPower();
+  }catch(error){showToast('LED command was not sent. Check the ESP32 connection and firmware.');}
+});
+
+function updateRange(){
+  const value=Number($('brightness').value);
+  $('brightnessValue').textContent=value;
+  $('brightness').style.setProperty('--fill',value+'%');
+}
+$('brightness').addEventListener('input',updateRange);
+$('brightness').addEventListener('change',async()=>{
+  try{await sendCommand('/api/brightness?value='+$('brightness').value);}
+  catch(error){showToast('Brightness command was not sent. Check the ESP32 connection and firmware.');}
+});
+
+function saveSelectedSettings(){
+  modeSettings[selectedMode]={
+    min:Number($('minIntensity').value),
+    max:Number($('maxIntensity').value)
+  };
+}
+function chooseMode(id){
+  saveSelectedSettings();
+  selectedMode=id;
+  document.querySelectorAll('.mode').forEach(button=>{
+    const active=button.dataset.mode===id;
+    button.classList.toggle('selected',active);
+    button.setAttribute('aria-pressed',String(active));
+  });
+  $('selectedModeLabel').textContent=modes.find(mode=>mode[0]===id)[1];
+  $('minIntensity').value=modeSettings[id].min;
+  $('maxIntensity').value=modeSettings[id].max;
+}
+document.querySelectorAll('.mode').forEach(button=>{
+  button.addEventListener('click',()=>chooseMode(button.dataset.mode));
+  button.setAttribute('aria-pressed',String(button.dataset.mode===selectedMode));
+});
+
+$('settingsToggle').addEventListener('click',()=>{
+  const open=$('settingsContent').classList.toggle('open');
+  $('settingsToggle').setAttribute('aria-expanded',String(open));
+  $('settingsChevron').textContent=open?'Hide settings −':'Show settings ＋';
+});
+$('applyMode').addEventListener('click',async()=>{
+  const min=Number($('minIntensity').value),max=Number($('maxIntensity').value);
+  if(!Number.isInteger(min)||!Number.isInteger(max)||min<0||max>100||min>max){
+    showToast('Use whole numbers from 0 to 100. Minimum must not exceed maximum.');return;
+  }
+  modeSettings[selectedMode]={min,max};
+  try{
+    await sendCommand('/api/mode?name='+encodeURIComponent(selectedMode)+'&min='+min+'&max='+max);
+    showToast('Mode settings sent to ESP32.');
+  }catch(error){showToast('Mode settings were not sent. ESP32 firmware must support this API.');}
+});
+
+$('accentButton').addEventListener('click',()=>{
+  const open=$('accentMenu').classList.toggle('open');
+  $('accentButton').setAttribute('aria-expanded',String(open));
+});
+document.querySelectorAll('.color-choice').forEach(button=>{
+  button.addEventListener('click',()=>{
+    const color=button.dataset.color;
+    document.documentElement.style.setProperty('--accent',color);
+    document.documentElement.style.setProperty('--accent-soft',color+'24');
+    document.documentElement.style.setProperty('--accent-glow',color+'3d');
+    document.querySelectorAll('.color-choice').forEach(choice=>choice.setAttribute('aria-pressed',String(choice===button)));
+    $('accentMenu').classList.remove('open');$('accentButton').setAttribute('aria-expanded','false');
+  });
+});
+document.addEventListener('click',event=>{
+  if(!event.target.closest('.accent-picker')){
+    $('accentMenu').classList.remove('open');$('accentButton').setAttribute('aria-expanded','false');
+  }
+});
+updateRange();renderPower();setConnected(false,'Connect your laptop and ESP32 to the same Wi-Fi.');
+</script>
+</body>
+</html>
